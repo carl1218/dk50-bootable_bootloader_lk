@@ -184,7 +184,7 @@ void fbcon_setup(struct fbcon_config *_config)
 		break;
         case FB_FORMAT_RGB888:
                 fg = RGB888_WHITE;
-                bg = RGB888_BLACK;
+                bg = RGB888_WHITE;
                 break;
 	default:
 		dprintf(CRITICAL, "unknown framebuffer pixel format\n");
