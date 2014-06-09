@@ -696,8 +696,10 @@ void target_uninit(void)
 	clock_ce_disable(SSD_CE_INSTANCE_1);
 #endif
 
+#if MMC_SDHCI_SUPPORT
 	/* Disable HC mode before jumping to kernel */
 	sdhci_mode_disable(&dev->host);
+#endif
 }
 
 void shutdown_device()

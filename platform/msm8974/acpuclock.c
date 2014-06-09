@@ -140,6 +140,7 @@ void clock_config_mmc(uint32_t interface, uint32_t freq)
 	{
 		ret = clk_get_set_enable(clk_name, 100000000, 1);
 	}
+#ifdef MMC_SDHCI_SUPPORT
 	else if(freq == MMC_CLK_192MHZ)
 	{
 		ret = clk_get_set_enable(clk_name, 192000000, 1);
@@ -152,6 +153,7 @@ void clock_config_mmc(uint32_t interface, uint32_t freq)
 	{
 		ret = clk_get_set_enable(clk_name, 384000000, 1);
 	}
+#endif
 	else
 	{
 		dprintf(CRITICAL, "sdc frequency (%u) is not supported\n", freq);
