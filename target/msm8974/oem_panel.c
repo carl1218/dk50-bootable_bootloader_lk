@@ -46,8 +46,10 @@
 #include "include/panel_generic_720p_cmd.h"
 #include "include/panel_jdi_qhd_dualdsi_video.h"
 #include "include/panel_jdi_qhd_dualdsi_cmd.h"
+#include "include/panel_hx8379a_wvga_video.h"
+#include "include/panel_hx8379c_wvga_video.h"
 
-#define DISPLAY_MAX_PANEL_DETECTION 3
+#define DISPLAY_MAX_PANEL_DETECTION 8
 
 /*---------------------------------------------------------------------------*/
 /* static panel selection variable                                           */
@@ -59,6 +61,8 @@ SHARP_QHD_VIDEO_PANEL,
 GENERIC_720P_CMD_PANEL,
 JDI_QHD_DUALDSI_VIDEO_PANEL,
 JDI_QHD_DUALDSI_CMD_PANEL,
+HX8379A_WVGA_VIDEO_PANEL,
+HX8379C_WVGA_VIDEO_PANEL,
 UNKNOWN_PANEL
 };
 
@@ -214,6 +218,41 @@ static void init_panel_data(struct panel_struct *panelstruct,
 		memcpy(phy_db->timing,
 			jdi_qhd_dualdsi_cmd_timings, TIMING_SIZE);
 		break;
+	case HX8379A_WVGA_VIDEO_PANEL:
+		panelstruct->paneldata        = &hx8379a_wvga_video_panel_data;
+		panelstruct->panelres         = &hx8379a_wvga_video_panel_res;
+		panelstruct->color            = &hx8379a_wvga_video_color;
+		panelstruct->videopanel       = &hx8379a_wvga_video_video_panel;
+		panelstruct->commandpanel     = &hx8379a_wvga_video_command_panel;
+		panelstruct->state            = &hx8379a_wvga_video_state;
+		panelstruct->laneconfig       = &hx8379a_wvga_video_lane_config;
+		panelstruct->paneltiminginfo  = &hx8379a_wvga_video_timing_info;
+		panelstruct->panelresetseq    = &hx8379a_wvga_video_reset_seq;
+		panelstruct->backlightinfo    = &hx8379a_wvga_video_backlight;
+		pinfo->mipi.panel_cmds	      = hx8379a_wvga_video_on_command;
+		pinfo->mipi.num_of_panel_cmds = HX8379A_WVGA_VIDEO_ON_COMMAND;
+		memcpy(phy_db->timing, hx8379a_wvga_video_timings, TIMING_SIZE);
+		dprintf(CRITICAL, "Display Init for HX8379A_WVGA_VIDEO_PANEL\n");
+		break;
+
+	case HX8379C_WVGA_VIDEO_PANEL:
+		panelstruct->paneldata        = &hx8379c_wvga_video_panel_data;
+		panelstruct->panelres         = &hx8379c_wvga_video_panel_res;
+		panelstruct->color            = &hx8379c_wvga_video_color;
+		panelstruct->videopanel       = &hx8379c_wvga_video_video_panel;
+		panelstruct->commandpanel     = &hx8379c_wvga_video_command_panel;
+		panelstruct->state            = &hx8379c_wvga_video_state;
+		panelstruct->laneconfig       = &hx8379c_wvga_video_lane_config;
+		panelstruct->paneltiminginfo  = &hx8379c_wvga_video_timing_info;
+		panelstruct->panelresetseq    = &hx8379c_wvga_video_reset_seq;
+		panelstruct->backlightinfo    = &hx8379c_wvga_video_backlight;
+		pinfo->mipi.panel_cmds	      = hx8379c_wvga_video_on_command;
+		pinfo->mipi.num_of_panel_cmds = HX8379C_WVGA_VIDEO_ON_COMMAND;
+		
+		memcpy(phy_db->timing, hx8379c_wvga_video_timings, TIMING_SIZE);
+		dprintf(CRITICAL, "Display Init for HX8379C_WVGA_VIDEO_PANEL\n");
+		break;
+		
 	case UNKNOWN_PANEL:
 		memset(panelstruct, 0, sizeof(struct panel_struct));
 		memset(pinfo->mipi.panel_cmds, 0, sizeof(struct mipi_dsi_cmd));
@@ -262,7 +301,7 @@ bool oem_panel_select(struct panel_struct *panelstruct,
 		auto_pan_loop++;
 		break;
 	case HW_PLATFORM_DRAGON:
-		panel_id = SHARP_QHD_VIDEO_PANEL;
+		panel_id = HX8379C_WVGA_VIDEO_PANEL;
 		break;
 	default:
 		dprintf(CRITICAL, "Display not enabled for %d HW type\n"
