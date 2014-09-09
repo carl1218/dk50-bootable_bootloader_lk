@@ -68,6 +68,7 @@ UNKNOWN_PANEL
 
 static uint32_t panel_id;
 
+static uint32_t apq8074_db_panel_id;
 int oem_panel_rotation()
 {
 	/* OEM can keep there panel spefic on instructions in this
@@ -88,6 +89,19 @@ int oem_panel_off()
 	/* OEM can keep there panel spefic off instructions in this
 	function */
 	return NO_ERROR;
+}
+
+int set_apq8074_db_panel_id(int x)
+{
+	switch(x) {
+	case 1:
+		apq8074_db_panel_id = HX8379C_WVGA_VIDEO_PANEL;
+		break;
+	case 0:
+	default:
+		apq8074_db_panel_id = SHARP_QHD_VIDEO_PANEL;
+		break;
+	}
 }
 
 static void init_panel_data(struct panel_struct *panelstruct,
@@ -301,7 +315,7 @@ bool oem_panel_select(struct panel_struct *panelstruct,
 		auto_pan_loop++;
 		break;
 	case HW_PLATFORM_DRAGON:
-		panel_id = HX8379C_WVGA_VIDEO_PANEL;
+		panel_id = apq8074_db_panel_id;
 		break;
 	default:
 		dprintf(CRITICAL, "Display not enabled for %d HW type\n"

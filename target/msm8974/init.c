@@ -57,6 +57,7 @@ enum hw_platform_subtype
 };
 
 extern  bool target_use_signed_kernel(void);
+extern  int set_apq8074_db_panel_id(int x);
 static void set_sdc_power_ctrl();
 
 static unsigned int target_id;
@@ -337,6 +338,36 @@ void target_mmc_caps(struct mmc_host *host)
 }
 #endif
 
+void board_display_type()
+{
+#define MAX_PANEL_INFO (6)
+#define PAGE_SIZE	(2048)
+#define SHARP		"SHARP"
+#define TRULY	"TRULY"
+	int index = INVALID_PTN;
+	unsigned long long ptn = 0;
+	unsigned int page_size = 2048;
+	char panel_info[PAGE_SIZE];
+
+	index = partition_get_index("fsg");
+	ptn = partition_get_offset(index);
+	dprintf(CRITICAL, "Partition no is %d, @ offset %llu\n", index, ptn);
+	if (mmc_read(ptn,  panel_info, page_size)) {
+		dprintf(CRITICAL, "ERROR: Cannot read panel info\n");
+                return;
+	}
+	else {
+		panel_info[6] = '\0';
+		dprintf(CRITICAL, "Panel : %s\n", panel_info);
+		if (!strncmp(panel_info, TRULY, 5)) {
+			dprintf(CRITICAL, "Found Truly Display ID\n");
+			set_apq8074_db_panel_id(1);
+		} else {
+			dprintf(CRITICAL, "Defaulting to Sharp Display ID\n");
+			set_apq8074_db_panel_id(0);
+		}
+	}
+}
 
 void target_init(void)
 {
@@ -352,14 +383,6 @@ void target_init(void)
 	if (target_use_signed_kernel())
 		target_crypto_init_params();
 	/* Display splash screen if enabled */
-#if DISPLAY_SPLASH_SCREEN
-	dprintf(INFO, "Display Init: Start\n");
-	if (board_hardware_subtype() != HW_PLATFORM_SUBTYPE_CDP_INTERPOSER)
-	{
-		display_init();
-	}
-	dprintf(INFO, "Display Init: Done\n");
-#endif
 
 	/*
 	 * Set drive strength & pull ctrl for
@@ -371,6 +394,16 @@ void target_init(void)
 	target_mmc_sdhci_init();
 #else
 	target_mmc_mci_init();
+#endif
+
+	board_display_type();
+#if DISPLAY_SPLASH_SCREEN
+	dprintf(INFO, "Display Init: Start\n");
+	if (board_hardware_subtype() != HW_PLATFORM_SUBTYPE_CDP_INTERPOSER)
+	{
+		display_init();
+	}
+	dprintf(INFO, "Display Init: Done\n");
 #endif
 }
 
@@ -481,6 +514,7 @@ void target_serialno(unsigned char *buf)
 {
 	unsigned int serialno;
 	if (target_is_emmc_boot()) {
+		dprintf(CRITICAL, "Serial No read done\n");
 		serialno = mmc_get_psn();
 		snprintf((char *)buf, 13, "%x", serialno);
 	}
