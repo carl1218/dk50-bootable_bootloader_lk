@@ -116,6 +116,8 @@ static const char *baseband_dsda    = " androidboot.baseband=dsda";
 static const char *baseband_dsda2   = " androidboot.baseband=dsda2";
 static const char *baseband_sglte2  = " androidboot.baseband=sglte2";
 
+static const char *wifi_mac_cmdline = " wlan_mac=";
+
 static unsigned page_size = 0;
 static unsigned page_mask = 0;
 static char ffbm_mode_string[FFBM_MODE_BUF_SIZE];
@@ -159,7 +161,8 @@ struct getvar_partition_info part_info[] =
 
 char max_download_size[MAX_RSP_SIZE];
 char charger_screen_enabled[MAX_RSP_SIZE];
-char sn_buf[13];
+char sn_buf[20];
+unsigned char wifi_mac_addr[20];
 char display_panel_buf[MAX_PANEL_BUF_SIZE];
 
 extern int emmc_recovery_init(void);
@@ -197,12 +200,20 @@ unsigned char *update_cmdline(const char * cmdline)
 	int have_cmdline = 0;
 	unsigned char *cmdline_final = NULL;
 	int pause_at_bootup = 0;
+	int has_wifi_mac = 0;
 	bool gpt_exists = partition_gpt_exists();
 
 	if (cmdline && cmdline[0]) {
 		cmdline_len = strlen(cmdline);
 		have_cmdline = 1;
 	}
+
+	if (target_wifi_mac(wifi_mac_addr)) {
+		cmdline_len += strlen(wifi_mac_cmdline);
+		cmdline_len += strlen(wifi_mac_addr);
+		has_wifi_mac = 1;
+	}
+
 	if (target_is_emmc_boot()) {
 		cmdline_len += strlen(emmc_cmdline);
 	}
@@ -286,6 +297,20 @@ unsigned char *update_cmdline(const char * cmdline)
 			src = cmdline;
 			while ((*dst++ = *src++));
 		}
+
+		if (has_wifi_mac) {
+			src = wifi_mac_cmdline;
+			if (have_cmdline) --dst;
+			have_cmdline = 1;
+			while ((*dst++ = *src++));
+
+			src = wifi_mac_addr;
+			if (have_cmdline) --dst;
+			have_cmdline = 1;
+			while ((*dst++ = *src++));
+		}
+
+
 		if (target_is_emmc_boot()) {
 			src = emmc_cmdline;
 			if (have_cmdline) --dst;

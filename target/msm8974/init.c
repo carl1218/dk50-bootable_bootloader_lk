@@ -58,6 +58,8 @@ enum hw_platform_subtype
 
 extern  bool target_use_signed_kernel(void);
 extern  int set_apq8074_db_panel_id(int x);
+extern unsigned char *mmc_get_board_serialno(void);
+extern unsigned char *mmc_get_board_wifi_mac(void);
 static void set_sdc_power_ctrl();
 
 static unsigned int target_id;
@@ -513,13 +515,31 @@ unsigned target_baseband()
 void target_serialno(unsigned char *buf)
 {
 	unsigned int serialno;
-	if (target_is_emmc_boot()) {
-		dprintf(CRITICAL, "Serial No read done\n");
-		serialno = mmc_get_psn();
-		snprintf((char *)buf, 13, "%x", serialno);
+	unsigned char *tmp;
+	tmp = mmc_get_board_serialno();
+	if (tmp != NULL) {
+		memcpy(buf, tmp, strlen(tmp));
+		*(buf+strlen(tmp)) = 0x00;
+	}
+	else {
+		if (target_is_emmc_boot()) {
+			serialno = mmc_get_psn();
+			snprintf((char *)buf, 20, "%x", serialno);
+		}
 	}
 }
 
+unsigned char *target_wifi_mac(unsigned char *buf)
+{
+	unsigned char *tmp;
+	tmp = mmc_get_board_wifi_mac();
+	if (tmp != NULL) {
+		memcpy(buf, tmp, strlen(tmp));
+		*(buf+strlen(tmp)) = 0x00;
+		return buf;
+	}
+	return NULL;
+}
 unsigned check_reboot_mode(void)
 {
 	uint32_t restart_reason = 0;
