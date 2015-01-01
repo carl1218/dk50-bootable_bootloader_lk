@@ -34,6 +34,9 @@
 #include <board.h>
 #include <mipi_dsi.h>
 
+#include <i2c_qup.h>
+#include <blsp_qup.h>
+
 #include "include/panel.h"
 #include "panel_display.h"
 
@@ -65,6 +68,8 @@ HX8379A_WVGA_VIDEO_PANEL,
 HX8379C_WVGA_VIDEO_PANEL,
 UNKNOWN_PANEL
 };
+
+void dsi2lvds_bridge_init();
 
 static uint32_t panel_id;
 
@@ -131,6 +136,7 @@ static void init_panel_data(struct panel_struct *panelstruct,
 		pinfo->mipi.signature 	= TOSHIBA_720P_VIDEO_SIGNATURE;
 		break;
 	case SHARP_QHD_VIDEO_PANEL:
+	
 		panelstruct->paneldata    = &sharp_qhd_video_panel_data;
 		panelstruct->panelres     = &sharp_qhd_video_panel_res;
 		panelstruct->color        = &sharp_qhd_video_color;
@@ -315,6 +321,7 @@ bool oem_panel_select(struct panel_struct *panelstruct,
 		auto_pan_loop++;
 		break;
 	case HW_PLATFORM_DRAGON:
+		dsi2lvds_bridge_init();
 		panel_id = apq8074_db_panel_id;
 		break;
 	default:
@@ -326,4 +333,65 @@ bool oem_panel_select(struct panel_struct *panelstruct,
 	init_panel_data(panelstruct, pinfo, phy_db);
 
 	return ret;
+}
+
+void dsi2lvds_bridge_init(void)
+{
+	unsigned char addresses[]={	0x09, 0x0A, 0x0B, 0x0D, 0x10, 
+					0x11, 0x12, 0x13, 0x18, 0x19, 
+					0x1A, 0x1B, 0x20, 0x21, 0x22,
+					0x23, 0x24, 0x25, 0x26, 0x27,
+					0x28, 0x29, 0x2A, 0x2B, 0x2C,
+					0x2D, 0x2E, 0x2F, 0x30, 0x31,
+					0x32, 0x33, 0x34, 0x35, 0x36,
+					0x37, 0x38, 0x39, 0x3A, 0x3B,
+					0x3C, 0x3D, 0x3E, 0x0D};
+	unsigned char datas[]={		0x01, 0x01, 0x58, 0x00, 0x5e,
+ 					0x00, 0x46, 0x46, 0x6F, 0x00, 
+					0x03, 0x00, 0x20, 0x03, 0x20, 
+					0x03, 0xe0, 0x01, 0xe0, 0x01, 
+					0x21, 0x00, 0x21, 0x00, 0x30, 
+					0x00, 0x30, 0x00, 0x03, 0x00, 
+					0x03, 0x00, 0x28, 0x28, 0x1d, 
+					0x1d, 0x28, 0x28, 0x0d, 0x0d, 
+					0x00, 0x00, 0x00, 0x01};
+
+	struct qup_i2c_dev *dev;
+	char buf[2];
+	struct i2c_msg msg;
+	int ret,i;
+	int soc_ver = board_soc_version(); //Get the CHIP version
+	/*
+	1 arg: BLSP ID can be BLSP_ID_1 or BLSP_ID_2
+	2 arg: QUP ID can be QUP_ID_0:QUP_ID_5
+	3 arg: I2C CLK. should be 100KHZ, or 400KHz
+	4 arg: Source clock, should be set @ 19.2 MHz for V1 and 50MHz for V2
+	or Higher Rev
+	*/
+	if( soc_ver >= BOARD_SOC_VERSION2 )
+	{
+		dev = qup_blsp_i2c_init(BLSP_ID_2, QUP_ID_1, 100000, 50000000);
+	}
+	else
+	{
+		dev = qup_blsp_i2c_init(BLSP_ID_2, QUP_ID_1, 100000, 19200000);
+	}
+	if(!dev)
+	{
+		printf("DSI2LVDS Bridge failed to initialize\n");
+		return;
+	}
+
+	//Test Transfer
+	msg.addr = 0x2d;
+	msg.flags = I2C_M_WR;
+	msg.len = 2;
+	msg.buf = buf;
+	for(i=0;i<sizeof(addresses);i++)
+	{
+		msg.buf[0]=addresses[i];
+		msg.buf[1]=datas[i];
+		ret = qup_i2c_xfer(dev, &msg, 1);
+		printf("DSI2LVDS: Sending 0x%02X, 0x%02X: returned %d \n", addresses[i],datas[i],ret);
+	}
 }

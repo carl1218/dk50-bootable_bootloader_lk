@@ -68,7 +68,13 @@ void gpio_config_blsp_i2c(uint8_t blsp_id, uint8_t qup_id)
 {
 	if (blsp_id == BLSP_ID_2) {
 		switch (qup_id) {
-		case QUP_ID_4:
+		case QUP_ID_1:  // Variscite SD800-CustomBoard DSI to LVDS
+			gpio_tlmm_config(47, 3, GPIO_OUTPUT, GPIO_NO_PULL,
+						GPIO_6MA, GPIO_DISABLE);
+			gpio_tlmm_config(48, 3, GPIO_OUTPUT, GPIO_NO_PULL,
+						GPIO_6MA, GPIO_DISABLE);
+		break;
+		case QUP_ID_4: // Variscite DART SD800 EEPROM 
 			gpio_tlmm_config(83, 3, GPIO_OUTPUT, GPIO_NO_PULL,
 						GPIO_6MA, GPIO_DISABLE);
 			gpio_tlmm_config(84, 3, GPIO_OUTPUT, GPIO_NO_PULL,

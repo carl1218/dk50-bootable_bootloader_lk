@@ -1,4 +1,5 @@
 /* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -484,6 +485,15 @@ static struct vote_clk gcc_ce1_axi_clk = {
 	},
 };
 
+struct branch_clk gcc_blsp2_qup2_i2c_apps_clk = {
+	.cbcr_reg = BLSP2_QUP2_I2C_APPS_CBCR,
+	.parent   = &cxo_clk_src.c,
+
+	.c = {
+		.dbg_name = "gcc_blsp2_qup2_i2c_apps_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
 
 struct branch_clk gcc_blsp2_qup5_i2c_apps_clk = {
 	.cbcr_reg = BLSP2_QUP5_I2C_APPS_CBCR,
@@ -841,7 +851,8 @@ static struct clk_lookup msm_clocks_8974[] =
 
 
 	CLK_LOOKUP("blsp2_ahb_clk",           gcc_blsp2_ahb_clk.c),
-	CLK_LOOKUP("blsp2_qup5_i2c_apps_clk", gcc_blsp2_qup5_i2c_apps_clk.c),
+	CLK_LOOKUP("blsp2_qup2_i2c_apps_clk", gcc_blsp2_qup2_i2c_apps_clk.c), // Variscite DART SD800CustomBoard DSI to LVDS
+	CLK_LOOKUP("blsp2_qup5_i2c_apps_clk", gcc_blsp2_qup5_i2c_apps_clk.c), // Variscite DART SD800 EEPROM
 
 	CLK_LOOKUP("mdp_ahb_clk",          mdp_ahb_clk.c),
 	CLK_LOOKUP("mdss_esc0_clk",        mdss_esc0_clk.c),

@@ -53,6 +53,7 @@ static void platform_detect()
 
 	ret = smem_read_alloc_entry_offset(SMEM_BOARD_INFO_LOCATION,
 						   &format, sizeof(format), 0);
+    dprintf(CRITICAL, "Format=%d\n",format);
 	if (ret)
 		return;
 
@@ -138,7 +139,8 @@ void board_init()
 
 uint32_t board_platform_id(void)
 {
-	return board.platform;
+	return 184;
+	// leonid return board.platform;
 }
 
 uint32_t board_target_id()
@@ -153,12 +155,14 @@ uint32_t board_baseband()
 
 uint32_t board_hardware_id()
 {
-	return board.platform_hw;
+	return 10;
+	// leonid  return board.platform_hw;
 }
 
 uint32_t board_hardware_subtype(void)
 {
-	return board.platform_subtype;
+	return 0;
+	//return board.platform_subtype;
 }
 
 uint8_t board_pmic_info(struct board_pmic_data *info, uint8_t num_ent)
@@ -176,5 +180,6 @@ uint8_t board_pmic_info(struct board_pmic_data *info, uint8_t num_ent)
 
 uint32_t board_soc_version()
 {
-	return board.platform_version;
+	return 0x00020002;
+	// leonid  return board.platform_version;
 }

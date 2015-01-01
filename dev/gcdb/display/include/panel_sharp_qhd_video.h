@@ -46,8 +46,8 @@
 /*---------------------------------------------------------------------------*/
 
 static struct panel_config sharp_qhd_video_panel_data = {
-  "qcom,mdss_dsi_sharp_qhd_video", "dsi:0:", "qcom,mdss-dsi-panel",
-  10, 0, "DISPLAY_1", 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  "qcom,mdss_dsi_sharp_qhd_video:1:qcom,mdss_dsi_sharp_qhd_video_1", "dsi:0:", "qcom,mdss-dsi-panel",
+  10, 0, "DISPLAY_1", 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
 
 /*---------------------------------------------------------------------------*/

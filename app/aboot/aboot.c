@@ -413,6 +413,7 @@ unsigned char *update_cmdline(const char * cmdline)
 		}
 
 		if (strlen(display_panel_buf)) {
+			dprintf(INFO, "DSI line:  %s\n",display_panel_buf);
 			src = display_cmdline;
 			if (have_cmdline) --dst;
 			while ((*dst++ = *src++));
