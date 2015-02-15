@@ -36,7 +36,7 @@ extern "C" {
 #if defined(DEBUG)
 #define DEBUGLEVEL DEBUG
 #else
-#define DEBUGLEVEL 2
+#define DEBUGLEVEL 0
 #endif
 
 /* debug levels */
