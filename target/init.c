@@ -155,9 +155,3 @@ __WEAK uint8_t target_is_edp()
 {
 	return 0;
 }
-
-__WEAK unsigned char *target_wifi_mac(unsigned char *buf)
-{
-	return NULL;
-}
-

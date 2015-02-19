@@ -222,7 +222,9 @@ static int qup_i2c_poll_state(struct qup_i2c_dev *dev, unsigned state)
 {
 	unsigned retries = 0;
 
+#ifdef DEBUG_QUP
 	dprintf(INFO, "Polling Status for state:0x%x\n", state);
+#endif
 
 	while (retries != 2000) {
 		unsigned status = readl(dev->qup_base + QUP_STATE);
@@ -236,7 +238,7 @@ static int qup_i2c_poll_state(struct qup_i2c_dev *dev, unsigned state)
 	return -ETIMEDOUT;
 }
 
-#ifdef DEBUG
+#ifdef DEBUG_QUP
 static void
 qup_verify_fifo(struct qup_i2c_dev *dev, unsigned val, unsigned addr, int rdwr)
 {
@@ -501,9 +503,11 @@ int qup_i2c_xfer(struct qup_i2c_dev *dev, struct i2c_msg msgs[], int num)
 		    dev->out_blk_sz * (2 << ((fifo_reg & 0x1C) >> 2));
 		dev->in_fifo_sz =
 		    dev->in_blk_sz * (2 << ((fifo_reg & 0x380) >> 7));
+#ifdef DEBUG_QUP
 		dprintf(INFO, "QUP IN:bl:%d, ff:%d, OUT:bl:%d, ff:%d\n",
 			dev->in_blk_sz, dev->in_fifo_sz, dev->out_blk_sz,
 			dev->out_fifo_sz);
+#endif
 	}
 
 	unmask_interrupt(dev->qup_irq);
@@ -613,9 +617,10 @@ int qup_i2c_xfer(struct qup_i2c_dev *dev, struct i2c_msg msgs[], int num)
 				ret = err;
 				goto out_err;
 			}
+#ifdef DEBUG_QUP
 			dprintf(INFO, "idx:%d, rem:%d, num:%d, mode:%d\n",
 				idx, rem, num, dev->mode);
-
+#endif
 			qup_print_status(dev);
 			if (dev->err) {
 				if (dev->err & QUP_I2C_NACK_FLAG) {

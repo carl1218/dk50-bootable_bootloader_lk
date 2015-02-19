@@ -140,7 +140,6 @@ void board_init()
 uint32_t board_platform_id(void)
 {
 	return 184;
-	// leonid return board.platform;
 }
 
 uint32_t board_target_id()
@@ -155,14 +154,12 @@ uint32_t board_baseband()
 
 uint32_t board_hardware_id()
 {
-	return 10;
-	// leonid  return board.platform_hw;
+	return 23;
 }
 
 uint32_t board_hardware_subtype(void)
 {
 	return 0;
-	//return board.platform_subtype;
 }
 
 uint8_t board_pmic_info(struct board_pmic_data *info, uint8_t num_ent)
@@ -181,5 +178,4 @@ uint8_t board_pmic_info(struct board_pmic_data *info, uint8_t num_ent)
 uint32_t board_soc_version()
 {
 	return 0x00020002;
-	// leonid  return board.platform_version;
 }

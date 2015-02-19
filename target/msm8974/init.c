@@ -30,6 +30,7 @@
 #include <platform/iomap.h>
 #include <platform/irqs.h>
 #include <platform/gpio.h>
+#include <dev/gpio.h>
 #include <reg.h>
 #include <target.h>
 #include <platform.h>
@@ -51,15 +52,13 @@
 #include <platform/gpio.h>
 #include <stdlib.h>
 
+
 enum hw_platform_subtype
 {
 	HW_PLATFORM_SUBTYPE_CDP_INTERPOSER = 8,
 };
 
 extern  bool target_use_signed_kernel(void);
-extern  int set_apq8074_db_panel_id(int x);
-extern unsigned char *mmc_get_board_serialno(void);
-extern unsigned char *mmc_get_board_wifi_mac(void);
 static void set_sdc_power_ctrl();
 
 static unsigned int target_id;
@@ -68,6 +67,8 @@ static uint32_t pmic_ver;
 #if MMC_SDHCI_SUPPORT
 struct mmc_device *dev;
 #endif
+
+#define ON_SOM_3V3_POWER_EN	17
 
 #define PMIC_ARB_CHANNEL_NUM    0
 #define PMIC_ARB_OWNER_ID       0
@@ -105,6 +106,8 @@ static uint32_t mmc_sdc_pwrctl_irq[] =
 
 void target_early_init(void)
 {
+        gpio_tlmm_config(ON_SOM_3V3_POWER_EN, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_DISABLE);
+        gpio_set(ON_SOM_3V3_POWER_EN, 2);
 #if WITH_DEBUG_UART
 	uart_dm_init(1, 0, BLSP1_UART1_BASE);
 #endif
@@ -340,37 +343,6 @@ void target_mmc_caps(struct mmc_host *host)
 }
 #endif
 
-void board_display_type()
-{
-#define MAX_PANEL_INFO (6)
-#define PAGE_SIZE	(2048)
-#define SHARP		"SHARP"
-#define TRULY	"TRULY"
-	int index = INVALID_PTN;
-	unsigned long long ptn = 0;
-	unsigned int page_size = 2048;
-	char panel_info[PAGE_SIZE];
-
-	index = partition_get_index("fsg");
-	ptn = partition_get_offset(index);
-	dprintf(CRITICAL, "Partition no is %d, @ offset %llu\n", index, ptn);
-	if (mmc_read(ptn,  panel_info, page_size)) {
-		dprintf(CRITICAL, "ERROR: Cannot read panel info\n");
-                return;
-	}
-	else {
-		panel_info[6] = '\0';
-		dprintf(CRITICAL, "Panel : %s\n", panel_info);
-		if (!strncmp(panel_info, TRULY, 5)) {
-			dprintf(CRITICAL, "Found Truly Display ID\n");
-			set_apq8074_db_panel_id(1);
-		} else {
-			dprintf(CRITICAL, "Defaulting to Sharp Display ID\n");
-			set_apq8074_db_panel_id(0);
-		}
-	}
-}
-
 void target_init(void)
 {
 	dprintf(INFO, "target_init()\n");
@@ -385,6 +357,14 @@ void target_init(void)
 	if (target_use_signed_kernel())
 		target_crypto_init_params();
 	/* Display splash screen if enabled */
+#if DISPLAY_SPLASH_SCREEN
+	dprintf(INFO, "Display Init: Start\n");
+	if (board_hardware_subtype() != HW_PLATFORM_SUBTYPE_CDP_INTERPOSER)
+	{
+		display_init();
+	}
+	dprintf(INFO, "Display Init: Done\n");
+#endif
 
 	/*
 	 * Set drive strength & pull ctrl for
@@ -396,16 +376,6 @@ void target_init(void)
 	target_mmc_sdhci_init();
 #else
 	target_mmc_mci_init();
-#endif
-
-	board_display_type();
-#if DISPLAY_SPLASH_SCREEN
-	dprintf(INFO, "Display Init: Start\n");
-	if (board_hardware_subtype() != HW_PLATFORM_SUBTYPE_CDP_INTERPOSER)
-	{
-		display_init();
-	}
-	dprintf(INFO, "Display Init: Done\n");
 #endif
 }
 
@@ -515,31 +485,13 @@ unsigned target_baseband()
 void target_serialno(unsigned char *buf)
 {
 	unsigned int serialno;
-	unsigned char *tmp;
-	tmp = mmc_get_board_serialno();
-	if (tmp != NULL) {
-		memcpy(buf, tmp, strlen(tmp));
-		*(buf+strlen(tmp)) = 0x00;
-	}
-	else {
-		if (target_is_emmc_boot()) {
-			serialno = mmc_get_psn();
-			snprintf((char *)buf, 20, "%x", serialno);
-		}
+	if (target_is_emmc_boot()) 
+	{
+		serialno = mmc_get_psn();
+		snprintf((char *)buf, 13, "%x", serialno);
 	}
 }
 
-unsigned char *target_wifi_mac(unsigned char *buf)
-{
-	unsigned char *tmp;
-	tmp = mmc_get_board_wifi_mac();
-	if (tmp != NULL) {
-		memcpy(buf, tmp, strlen(tmp));
-		*(buf+strlen(tmp)) = 0x00;
-		return buf;
-	}
-	return NULL;
-}
 unsigned check_reboot_mode(void)
 {
 	uint32_t restart_reason = 0;
@@ -627,7 +579,7 @@ void target_usb_init(void)
 
 	dprintf(CRITICAL, "\nCheck--> board_hardware_id()= %d\n", board_hardware_id());	
 	/* Enable secondary USB PHY on DragonBoard8074 */
-	if (board_hardware_id() == HW_PLATFORM_DRAGON) {
+	if ((board_hardware_id() == HW_PLATFORM_DRAGON)||(board_hardware_id() == HW_PLATFORM_VARSOM)) {
 		/* Route ChipIDea to use secondary USB HS port2 */
 		writel_relaxed(1, USB2_PHY_SEL);
 
@@ -711,6 +663,7 @@ int target_cont_splash_screen()
 			case HW_PLATFORM_FLUID:
 			case HW_PLATFORM_DRAGON:
 			case HW_PLATFORM_LIQUID:
+			case HW_PLATFORM_VARSOM:
 				dprintf(SPEW, "Target_cont_splash=1\n");
 				splash_screen = 1;
 				break;

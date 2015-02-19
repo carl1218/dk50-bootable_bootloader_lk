@@ -208,11 +208,13 @@ unsigned char *update_cmdline(const char * cmdline)
 		have_cmdline = 1;
 	}
 
+/*
 	if (target_wifi_mac(wifi_mac_addr)) {
 		cmdline_len += strlen(wifi_mac_cmdline);
 		cmdline_len += strlen(wifi_mac_addr);
 		has_wifi_mac = 1;
 	}
+*/
 
 	if (target_is_emmc_boot()) {
 		cmdline_len += strlen(emmc_cmdline);
@@ -1564,50 +1566,6 @@ void cmd_erase(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
-void set_display(int x)
-{
-	int display_id = x;
-	unsigned long long ptn = 0;
-	unsigned long long size = 0;
-	int index = INVALID_PTN;
-	char panel_info[512] = "SHARP";
-	index = partition_get_index("fsg");
-	ptn = partition_get_offset(index);
-
-	if (ptn == 0) {
-		fastboot_fail("partition table doesn't exist");
-		return;
-	}
-
-	switch (display_id) {
-	case 1:
-		dprintf(CRITICAL, "Selected Panel : Truly (FWVGA)\n");
-		strcpy(panel_info, "TRULY");
-		break;
-	case 0:
-	default:
-		dprintf(CRITICAL, "Selected Panel : Sharp (qHD)\n");
-		strcpy(panel_info, "SHARP");
-		break;
-	}
-
-	set_apq8074_db_panel_id(display_id);
-	if (mmc_write(ptn, 512, (unsigned int *)panel_info)) {
-		fastboot_fail("flash write failure");
-		return;
-	}
-
-	dprintf(INFO, "%s partition updated\n", "fsg");
-	fastboot_okay("");
-}
-void cmd_oem_setdisplay_sharp(const char *arg, void *data, unsigned sz)
-{
-	set_display(0);
-}
-void cmd_oem_setdisplay_truly(const char *arg, void *data, unsigned sz)
-{
-	set_display(1);
-}
 void cmd_erase_mmc(const char *arg, void *data, unsigned sz)
 {
 	BUF_DMA_ALIGN(out, DEFAULT_ERASE_SIZE);
@@ -2237,8 +2195,6 @@ void aboot_fastboot_register_commands(void)
 			device.charger_screen_enabled);
 	fastboot_publish("charger-screen-enabled",
 			(const char *) charger_screen_enabled);
-	fastboot_register("oem set-sharp-display", cmd_oem_setdisplay_sharp);
-	fastboot_register("oem set-truly-display", cmd_oem_setdisplay_truly);
 }
 
 void aboot_init(const struct app_descriptor *app)

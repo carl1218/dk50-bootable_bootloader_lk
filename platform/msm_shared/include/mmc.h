@@ -401,7 +401,6 @@ extern unsigned int mmc_boot_mci_base;
 
 #define MMC_BOOT_EXT_USER_WP              171
 #define MMC_BOOT_EXT_ERASE_GROUP_DEF      175
-#define MMC_BOOT_EXT_PARTITION_CONFIG     179
 #define MMC_BOOT_EXT_ERASE_MEM_CONT       181
 #define MMC_BOOT_EXT_CMMC_BUS_WIDTH       183
 #define MMC_BOOT_EXT_CMMC_HS_TIMING       185
@@ -417,8 +416,6 @@ extern unsigned int mmc_boot_mci_base;
 
 #define MMC_BOOT_US_PERM_WP_DIS           (1<<4)
 #define MMC_BOOT_US_PWR_WP_EN             1
-#define MMC_BOOT_PART_CONFIG_BOOT1_ACC    0x1
-#define MMC_BOOT_PART_CONFIG_BOOT2_ACC    0x2
 
 /* For SD */
 #define MMC_BOOT_SD_HC_VOLT_SUPPLIED      0x000001AA
@@ -429,27 +426,6 @@ extern unsigned int mmc_boot_mci_base;
 
 /* Put the card to sleep */
 #define MMC_CARD_SLEEP                    (1 << 15)
-
-/* FORMAT of the cpuboard_info
-*|------------------------------------------------------------------------------------|
-*| MAGICNO(!!Intrinsyc!!) 13 | MACADDR  | Serial NO | timestap  | Version |CRC32      |
-*| 13 bytes		     | 17bytes  | 21 bytes  | 28 bytes  | 1 byte  |32bit CRC  |
-*| 		             | with ":" | with "-"  | with "D&T |         |           |
-*|------------------------------------------------------------------------------------|
-*/
-/* For board info store in boot partition */
-#define MAGIC_NO_KEY	"!!Intrinsyc!!"
-#define MAGIC_NO_LEN 	13
-#define SERIAL_NO_LEN	21
-#define MAC_ADDR_LEN	17
-struct cpuboard_info {
-	char magic_no[MAGIC_NO_LEN];
-	char serial_no[SERIAL_NO_LEN];
-	char mac_addr[MAC_ADDR_LEN];
-	char timestamp[28];
-	char version;
-	unsigned int crc32;
-};
 
 /* Data structure definitions */
 struct mmc_boot_command {
@@ -506,11 +482,6 @@ struct mmc_cid {
 	unsigned int year;	/* 4 bits manufacturing year */
 };
 
-struct mmc_boot_boardinfo {
-	unsigned char serial_no[SERIAL_NO_LEN+1];
-	unsigned char mac_addr[MAC_ADDR_LEN];
-};
-
 /* SCR Register */
 struct mmc_boot_scr {
 	unsigned int scr_structure;
@@ -551,7 +522,6 @@ struct mmc_card {
 	struct mmc_cid cid;
 	struct mmc_csd csd;
 	struct mmc_boot_scr scr;
-	struct mmc_boot_boardinfo boardinfo;
 };
 
 #define MMC_BOOT_XFER_MULTI_BLOCK        0
