@@ -127,7 +127,9 @@ static int bootstrap2(void *arg)
 #if WITH_LIB_BIO
 	bio_init();
 #endif
+
 #if WITH_LIB_FS
+    dprintf(INFO, "fs_init... \n");
 	fs_init();
 #endif
 
