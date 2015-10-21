@@ -525,6 +525,16 @@ struct branch_clk gcc_blsp2_qup5_i2c_apps_clk = {
 	},
 };
 
+struct branch_clk gcc_blsp2_qup4_i2c_apps_clk = {
+	.cbcr_reg = BLSP2_QUP4_I2C_APPS_CBCR,
+	.parent   = &cxo_clk_src.c,
+
+	.c = {
+		.dbg_name = "gcc_blsp2_qup4_i2c_apps_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
 /* Display clocks */
 static struct clk_freq_tbl ftbl_mdss_esc0_1_clk[] = {
 	F_MM(19200000,    cxo,   1,   0,   0),
@@ -870,12 +880,18 @@ static struct clk_lookup msm_clocks_8974[] =
 	CLK_LOOKUP("ce1_src_clk",  ce1_clk_src.c),
 
 	CLK_LOOKUP("blsp1_ahb_clk", gcc_blsp1_ahb_clk.c),
-	CLK_LOOKUP("blsp1_qup1_i2c_apps_clk", gcc_blsp1_qup1_i2c_apps_clk.c), // Lumus DK-50 Display 2
-	CLK_LOOKUP("blsp1_qup3_i2c_apps_clk", gcc_blsp1_qup3_i2c_apps_clk.c), // Lumus DK-50 Display 1
+	// Lumus DK-50 Display 2
+	CLK_LOOKUP("blsp1_qup1_i2c_apps_clk", gcc_blsp1_qup1_i2c_apps_clk.c),
+	// Lumus DK-50 Display 1
+	CLK_LOOKUP("blsp1_qup3_i2c_apps_clk", gcc_blsp1_qup3_i2c_apps_clk.c),
 
 	CLK_LOOKUP("blsp2_ahb_clk",           gcc_blsp2_ahb_clk.c),
-	CLK_LOOKUP("blsp2_qup2_i2c_apps_clk", gcc_blsp2_qup2_i2c_apps_clk.c), // Variscite DART SD800CustomBoard DSI to LVDS
-	CLK_LOOKUP("blsp2_qup5_i2c_apps_clk", gcc_blsp2_qup5_i2c_apps_clk.c), // Variscite DART SD800 EEPROM
+	// Variscite DART SD800CustomBoard DSI to LVDS
+	CLK_LOOKUP("blsp2_qup2_i2c_apps_clk", gcc_blsp2_qup2_i2c_apps_clk.c),
+	// Variscite DART SD800 EEPROM
+	CLK_LOOKUP("blsp2_qup5_i2c_apps_clk", gcc_blsp2_qup5_i2c_apps_clk.c),
+	// Lumus DK-50 Aux board
+	CLK_LOOKUP("blsp2_qup4_i2c_apps_clk", gcc_blsp2_qup4_i2c_apps_clk.c),
 
 	CLK_LOOKUP("mdp_ahb_clk",          mdp_ahb_clk.c),
 	CLK_LOOKUP("mdss_esc0_clk",        mdss_esc0_clk.c),

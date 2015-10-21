@@ -74,6 +74,12 @@ void gpio_config_blsp_i2c(uint8_t blsp_id, uint8_t qup_id)
 			gpio_tlmm_config(48, 3, GPIO_OUTPUT, GPIO_NO_PULL,
 						GPIO_6MA, GPIO_DISABLE);
 		break;
+		case QUP_ID_3:	// Lumus DK-50 AUX board (imu, ncp6925)
+			gpio_tlmm_config(55, 3, GPIO_OUTPUT, GPIO_NO_PULL,
+						GPIO_6MA, GPIO_DISABLE);
+			gpio_tlmm_config(56, 3, GPIO_OUTPUT, GPIO_NO_PULL,
+						GPIO_6MA, GPIO_DISABLE);
+		break;
 		case QUP_ID_4: // Variscite DART SD800 EEPROM 
 			gpio_tlmm_config(83, 3, GPIO_OUTPUT, GPIO_NO_PULL,
 						GPIO_6MA, GPIO_DISABLE);
