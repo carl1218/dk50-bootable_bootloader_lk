@@ -50,6 +50,8 @@
 #include <scm.h>
 #include <platform/clock.h>
 #include <platform/gpio.h>
+#include <i2c_qup.h>
+#include <blsp_qup.h>
 #include <stdlib.h>
 
 
@@ -60,6 +62,9 @@ enum hw_platform_subtype
 
 extern  bool target_use_signed_kernel(void);
 static void set_sdc_power_ctrl();
+
+static void gpio_config_debug_board();
+static void gpio_config_aux_board();
 
 static unsigned int target_id;
 static uint32_t pmic_ver;
@@ -343,6 +348,11 @@ void target_mmc_caps(struct mmc_host *host)
 }
 #endif
 
+#define VOLUME_DOWN_POLL_INTERVAL_MS (10)
+#define VOLUME_DOWN_SAMPLE_PERIOD_MS (2000)
+#define VOLUME_DOWN_SAMPLES \
+	(VOLUME_DOWN_SAMPLE_PERIOD_MS / VOLUME_DOWN_POLL_INTERVAL_MS)
+
 void target_init(void)
 {
 	dprintf(INFO, "target_init()\n");
@@ -353,6 +363,26 @@ void target_init(void)
 	pmic_ver = pm8x41_get_pmic_rev();
 
 	target_keystatus();
+
+	/* check user fastboot mode (volume-down switch) */
+	if (keys_get_state(KEY_VOLUMEDOWN)) {
+		unsigned int i;
+		for (i = 0; i < VOLUME_DOWN_SAMPLES; i++) {
+			if(target_volume_down()) {
+				keys_post_event(KEY_VOLUMEDOWN, 1);
+			} else {
+				keys_post_event(KEY_VOLUMEDOWN, 0);
+			}
+			if (keys_get_state(KEY_VOLUMEDOWN)) {
+				thread_sleep(VOLUME_DOWN_POLL_INTERVAL_MS);
+				continue;
+			}
+			break;
+		}
+		if (i == VOLUME_DOWN_SAMPLES) {
+			dprintf(INFO, "user requested to fastboot using volume down key\n");
+		}
+	}
 
 	if (target_use_signed_kernel())
 		target_crypto_init_params();
@@ -365,6 +395,8 @@ void target_init(void)
 	}
 	dprintf(INFO, "Display Init: Done\n");
 #endif
+	gpio_config_debug_board();
+	gpio_config_aux_board();
 
 	/*
 	 * Set drive strength & pull ctrl for
@@ -796,4 +828,200 @@ void target_usb_stop(void)
 	/* Disable VBUS mimicing in the controller. */
 	if (target_needs_vbus_mimic())
 		ulpi_write(ULPI_MISC_A_VBUSVLDEXTSEL | ULPI_MISC_A_VBUSVLDEXT, ULPI_MISC_A_CLEAR);
+}
+
+static void gpio_config_debug_board()
+{
+	/* LED2 RED ON */
+	gpio_tlmm_config(30, /*func*/0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, 1);
+	gpio_set(30, 2);
+	dprintf(INFO, "LED2 RED ON\n");
+}
+
+static char ncp6925_config_dcdc_and_ldo_addr[] = {
+	0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
+};
+
+static char ncp6925_config_dcdc_and_ldo_data[] = {
+	0xb0, 0xb0, 0x03, 0x34, 0x34, 0x1c, 0x1c
+};
+
+static const int ncp6925_power_seq_delay = 2;
+
+static char ncp6925_power_sequence[] = {
+	0x01, 0x03, 0x07, 0x0f, 0x1f, 0x3f
+};
+
+static const int ncp6925_power_sequence_delay[] = {
+	5, 5, 4, 4, 4, 4
+};
+
+static void cameras_power_config() {
+	struct qup_i2c_dev* dev;
+	int ret = 0;
+	struct i2c_msg msg;
+	char buf[2];
+	char* addresses = ncp6925_config_dcdc_and_ldo_addr;
+	char* datas = ncp6925_config_dcdc_and_ldo_data;
+	size_t size = sizeof(ncp6925_config_dcdc_and_ldo_addr);
+	int i;
+
+	dprintf(INFO, "%s:: open BLSP10 (b2/q3)\n", __FUNCTION__);
+	// open port @ 100Khz (source clock 19.2Mhz)
+	dev = qup_blsp_i2c_init(BLSP_ID_2, QUP_ID_3, 100000, 19200000);
+	if (!dev)
+	{
+		dprintf(CRITICAL, "%s:: i2c failed to init\n", __FUNCTION__);
+		return;
+	}
+
+	msg.addr = 0x50;
+	msg.flags = I2C_M_WR;
+	msg.len = 2;
+	msg.buf = buf;
+
+	for (i = 0; i < size; i++) {
+		msg.buf[0] = addresses[i];
+		msg.buf[1] = datas[i];
+		ret = qup_i2c_xfer(dev, &msg, 1);
+		dprintf(INFO, "%s:: power conf %d result: %d", __FUNCTION__, i, ret);
+	}
+
+	size = sizeof(ncp6925_power_sequence);
+	datas = ncp6925_power_sequence;
+	thread_sleep(ncp6925_power_seq_delay);
+	for (i = 0; i < size; i++) {
+		msg.buf[0] = 0x0b;
+		msg.buf[1] = datas[i];
+		ret = qup_i2c_xfer(dev, &msg, 1);
+		dprintf(INFO, "%s:: power seq %d result: %d", __FUNCTION__, i, ret);
+		thread_sleep(ncp6925_power_sequence_delay[i]);
+	}
+
+	qup_i2c_deinit(dev);
+	dprintf(INFO, "%s:: done\n", __FUNCTION__);
+}
+
+static void camA_pwdn_set(int enable) {
+	if (enable) {
+		gpio_tlmm_config(51, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA,
+			GPIO_ENABLE);
+		gpio_set(51, 2);
+		dprintf(INFO, "CAM A PWDN is HIGH\n");
+		return;
+	}
+	gpio_tlmm_config(51, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, GPIO_ENABLE);
+	gpio_set(51, 0);
+	dprintf(INFO, "CAM A PWDN is LOW\n");
+}
+
+static void camB_pwdn_set(int enable) {
+	if (enable) {
+		gpio_tlmm_config(52, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA,
+			GPIO_ENABLE);
+		gpio_set(52, 2);
+		dprintf(INFO, "CAM B PWDN is HIGH\n");
+		return;
+	}
+	gpio_tlmm_config(52, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, GPIO_ENABLE);
+	gpio_set(52, 0);
+	dprintf(INFO, "CAM B PWDN is LOW\n");
+}
+
+static void cam_pwdn_set(int enable) {
+		camA_pwdn_set(enable);
+		camB_pwdn_set(enable);
+#if 0
+	if (enable) {
+		/* both cameras PWDN set to HIGH */
+		gpio_tlmm_config(51, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, 1);
+		gpio_set(51, 2);
+		dprintf(INFO, "CAM A PWDN is HIGH\n");
+		gpio_tlmm_config(52, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, 1);
+		gpio_set(52, 2);
+		dprintf(INFO, "CAM B PWDN is HIGH\n");
+		return;
+	}
+	/* both cameras PWDN set to LOW */
+	gpio_tlmm_config(51, /*func*/0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, 1);
+	gpio_set(51, 0);
+	dprintf(INFO, "CAM A PWDN is LOW\n");
+	gpio_tlmm_config(52, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, 1);
+	gpio_set(52, 0);
+	dprintf(INFO, "CAM B PWDN is LOW\n");
+#endif
+}
+
+static void camA_reset_set(int enable) {
+	if (enable) {
+		gpio_tlmm_config(49, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA,
+			GPIO_ENABLE);
+		gpio_set(49, 2);
+		dprintf(INFO, "CAM A RESET is HIGH\n");
+		return;
+	}
+	gpio_tlmm_config(49, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, GPIO_ENABLE);
+	gpio_set(49, 0);
+	dprintf(INFO, "CAM A RESET is LOW\n");
+}
+
+static void camB_reset_set(int enable) {
+	if (enable) {
+		gpio_tlmm_config(50, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA,
+			GPIO_ENABLE);
+		gpio_set(50, 2);
+		dprintf(INFO, "CAM B RESET is HIGH\n");
+		return;
+	}
+	gpio_tlmm_config(50, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, GPIO_ENABLE);
+	gpio_set(50, 0);
+	dprintf(INFO, "CAM B RESET is LOW\n");
+}
+
+static void cam_reset_set(int enable) {
+	camA_reset_set(enable);
+	camB_reset_set(enable);
+#if 0
+	if (enable) {
+		/* both cameras RESET set to HIGH */
+		gpio_tlmm_config(49, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, 1);
+		gpio_set(49, 2);
+		dprintf(INFO, "CAM A RESET is HIGH\n");
+		gpio_tlmm_config(50, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, 1);
+		gpio_set(50, 2);
+		return;
+	}
+	/* both cameras RESET set to LOW */
+	gpio_tlmm_config(49, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, 1);
+	gpio_set(49, 0);
+	dprintf(INFO, "CAM A RESET is LOW\n");
+	gpio_tlmm_config(50, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, 1);
+	gpio_set(50, 0);
+	dprintf(INFO, "CAM B RESET is LOW\n");
+#endif
+}
+
+static void gpio_config_aux_board()
+{
+//GPIO_NO_PULL GPIO_PULL_DOWN GPIO_PULL_UP
+    /* IMU power supply */
+	gpio_tlmm_config(53, /*func*/0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, 1);
+	gpio_set(53, 2);
+	dprintf(INFO, "IMU power on\n");
+
+	cam_pwdn_set(1);
+	thread_sleep(50);
+
+	cameras_power_config();
+	thread_sleep(150);
+	// reset cameras
+	camA_reset_set(0);
+	thread_sleep(100);
+	camA_reset_set(1);
+	thread_sleep(100);
+
+	camB_reset_set(0);
+	thread_sleep(100);
+	camB_reset_set(1);
+	thread_sleep(100);
 }
